@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-tema="escuro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema AT &middot; Prontuário Terapêutico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="CSS/style.css">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4fb0a5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Sistema AT">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+</head>
+<body>
+ 
+<div class="app-shell">
+ 
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-mark">AT</div>
+      <div class="sidebar-brand-text">
+        <strong>Sistema AT</strong>
+        <span>Prontuário Terapêutico</span>
+      </div>
+    </div>
+ 
+    <nav class="sidebar-nav">
+      <a href="#/criancas" class="nav-item" data-rota="criancas">
+        <span class="nav-icon" data-icon="criancas"></span>
+        <span>Crianças</span>
+      </a>
+      <a href="#/atendimentos" class="nav-item" data-rota="atendimentos">
+        <span class="nav-icon" data-icon="atendimentos"></span>
+        <span>Atendimentos</span>
+      </a>
+      <a href="#/historicos" class="nav-item" data-rota="historicos">
+        <span class="nav-icon" data-icon="historicos"></span>
+        <span>Históricos</span>
+      </a>
+      <a href="#/resumos" class="nav-item" data-rota="resumos">
+        <span class="nav-icon" data-icon="resumos"></span>
+        <span>Resumos</span>
+      </a>
+      <a href="#/devolutivas" class="nav-item" data-rota="devolutivas">
+        <span class="nav-icon" data-icon="devolutivas"></span>
+        <span>Devolutivas</span>
+      </a>
+      <a href="#/relatorios" class="nav-item" data-rota="relatorios">
+        <span class="nav-icon" data-icon="relatorios"></span>
+        <span>Relatórios</span>
+      </a>
+      <a href="#/backup" class="nav-item" data-rota="backup">
+        <span class="nav-icon" data-icon="backup"></span>
+        <span>Backup</span>
+      </a>
+ 
+      <div class="sidebar-divider"></div>
+ 
+      <a href="#/configuracoes" class="nav-item" data-rota="configuracoes">
+        <span class="nav-icon" data-icon="configuracoes"></span>
+        <span>Configurações</span>
+      </a>
+      <a href="#/ajuda" class="nav-item" data-rota="ajuda">
+        <span class="nav-icon" data-icon="ajuda"></span>
+        <span>Ajuda</span>
+      </a>
+    </nav>
+ 
+    <div class="sidebar-footer">
+      <span id="sidebar-status-db">Conectando ao banco…</span>
+    </div>
+  </aside>
+ 
+  <!-- ===================== CONTEÚDO ===================== -->
+  <main class="main-content">
+    <div id="view-root" class="view-root">
+      <!-- As views são renderizadas dinamicamente pelo app.js -->
+    </div>
+  </main>
+ 
+</div>
+ 
+<!-- ===================== MODAL ===================== -->
+<div id="modal-overlay" class="modal-overlay" hidden>
+  <div id="modal-box" class="modal-box" role="dialog" aria-modal="true">
+    <div class="modal-header">
+      <h2 id="modal-title"></h2>
+      <button type="button" class="modal-close" id="modal-close-btn" aria-label="Fechar">&times;</button>
+    </div>
+    <div id="modal-body" class="modal-body"></div>
+  </div>
+</div>
+ 
+<!-- ===================== TOASTS ===================== -->
+<div id="toast-container" class="toast-container"></div>
+ 
+<!-- ===================== SCRIPTS (ordem importa) ===================== -->
+<script src="JS/banco.js"></script>
+<script src="JS/ui.js"></script>
+<script src="JS/criancas.js"></script>
+<script src="JS/atendimentos.js"></script>
+<script src="JS/historicos.js"></script>
+<script src="JS/resumos.js"></script>
+<script src="JS/devolutivas.js"></script>
+<script src="JS/relatorios.js"></script>
+<script src="JS/backup.js"></script>
+<script src="JS/configuracoes.js"></script>
+<script src="JS/ajuda.js"></script>
+<script src="JS/app.js"></script>
+</body>
+</html>
