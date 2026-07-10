@@ -1,4 +1,4 @@
-/* app.js — roteador hash-based, inicialização, liga tudo */
+/* app.js — roteador, login Google, inicialização com Supabase */
 
 const App = (function () {
   'use strict';
@@ -15,18 +15,13 @@ const App = (function () {
     ajuda:         () => Ajuda.renderizarView(raiz()),
   };
 
-  function raiz() {
-    return document.getElementById('view-root');
-  }
+  function raiz() { return document.getElementById('view-root'); }
 
   function rotaAtual() {
-    const hash = location.hash.replace('#/', '').split('?')[0].trim();
-    return hash || 'criancas';
+    return location.hash.replace('#/', '').split('?')[0].trim() || 'criancas';
   }
 
-  function navegar(rota) {
-    location.hash = `#/${rota}`;
-  }
+  function navegar(rota) { location.hash = `#/${rota}`; }
 
   function _atualizarNavAtivo(rota) {
     document.querySelectorAll('.nav-item').forEach(el => {
@@ -39,60 +34,81 @@ const App = (function () {
     _atualizarNavAtivo(rota);
     const fn = ROTAS[rota];
     if (fn) {
-      try {
-        await fn();
-      } catch (err) {
+      try { await fn(); }
+      catch (err) {
         console.error('[App] Erro ao renderizar rota:', rota, err);
         raiz().innerHTML = `<div class="estado-vazio"><h3>Erro ao carregar a tela</h3><p>${UI.escapeHtml(err.message)}</p></div>`;
       }
-    } else {
-      navegar('criancas');
+    } else { navegar('criancas'); }
+  }
+
+  /* ---- TELA DE LOGIN ---- */
+  function _mostrarLogin() {
+    document.querySelector('.app-shell').style.display = 'none';
+    document.getElementById('tela-login').style.display = 'flex';
+  }
+
+  function _mostrarApp(user) {
+    document.getElementById('tela-login').style.display = 'none';
+    document.querySelector('.app-shell').style.display = 'flex';
+
+    // Mostra nome do usuário na sidebar
+    const footer = document.getElementById('sidebar-status-db');
+    footer.innerHTML = `<span class="ok">● ${UI.escapeHtml(user.email)}</span>`;
+
+    // Botão sair
+    const btnSair = document.getElementById('btn-sair');
+    if (btnSair) {
+      btnSair.addEventListener('click', async () => {
+        await BancoAT.logout();
+        _mostrarLogin();
+      });
     }
   }
 
   function _registrarServiceWorker() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log('[PWA] Service Worker registrado.'))
         .catch(err => console.warn('[PWA] Falha ao registrar SW:', err));
     }
   }
 
   async function init() {
-    // Registra PWA
     _registrarServiceWorker();
-
-    // Inicializa banco
-    try {
-      await BancoAT.abrir();
-      document.getElementById('sidebar-status-db').innerHTML = '<span class="ok">● Banco conectado</span>';
-    } catch (err) {
-      document.getElementById('sidebar-status-db').innerHTML = '<span class="erro">● Erro no banco</span>';
-      console.error('[App] Erro ao abrir banco:', err);
-    }
-
-    // Aplica tema salvo
-    try {
-      const cfg = await BancoAT.obterConfiguracoes();
-      UI.aplicarTema(cfg.tema || 'escuro');
-    } catch { /* usa tema padrão */ }
-
-    // Injeta ícones SVG na sidebar
     UI.injetarIcones();
-
-    // Inicializa modal
     UI._initModal();
 
-    // Verifica backup automático (a cada 14 dias)
-    try {
-      await Backup.verificarBackupAutomatico();
-    } catch (err) {
-      console.warn('[Backup] Erro na verificação automática:', err);
-    }
+    // Escuta mudanças de autenticação
+    BancoAT.onAuthChange(async (user) => {
+      if (user) {
+        _mostrarApp(user);
 
-    // Roteamento
-    window.addEventListener('hashchange', _rotear);
-    await _rotear();
+        // Aplica tema
+        try {
+          const cfg = await BancoAT.obterConfiguracoes();
+          UI.aplicarTema(cfg.tema || 'escuro');
+        } catch { /* usa padrão */ }
+
+        // Backup automático
+        try { await Backup.verificarBackupAutomatico(); } catch { /* silencioso */ }
+
+        // Roteamento
+        window.removeEventListener('hashchange', _rotear);
+        window.addEventListener('hashchange', _rotear);
+        await _rotear();
+      } else {
+        _mostrarLogin();
+      }
+    });
+
+    // Botão de login
+    document.getElementById('btn-login-google').addEventListener('click', async () => {
+      try {
+        await BancoAT.loginComGoogle();
+      } catch (err) {
+        UI.toast('Erro ao fazer login. Tente novamente.', 'erro');
+      }
+    });
   }
 
   document.addEventListener('DOMContentLoaded', init);
