@@ -1,73 +1,85 @@
-/* banco.js — camada IndexedDB, sem lógica de UI */
+/* banco.js — camada de acesso ao Supabase (substitui IndexedDB) */
 
 const BancoAT = (function () {
   'use strict';
 
-  const NOME_DB = 'SistemaAT_DB';
-  const VERSAO = 1;
-  let _db = null;
+  const SUPABASE_URL = 'https://bqakxguzundktwjefjae.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_q3E8nFjeKFGvkiM4Oo_uLw_RMbkByNJ';
 
-  function abrir() {
-    return new Promise((resolve, reject) => {
-      if (_db) return resolve(_db);
-      const req = indexedDB.open(NOME_DB, VERSAO);
+  const _client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-      req.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains('criancas')) {
-          const store = db.createObjectStore('criancas', { keyPath: 'id', autoIncrement: true });
-          store.createIndex('nome', 'nome', { unique: false });
-          store.createIndex('numeroPasta', 'numeroPasta', { unique: false });
-          store.createIndex('status', 'status', { unique: false });
-        }
-        if (!db.objectStoreNames.contains('configuracoes')) {
-          db.createObjectStore('configuracoes', { keyPath: 'chave' });
-        }
-      };
+  /* ---- AUTH ---- */
+  function getClient() { return _client; }
 
-      req.onsuccess = (e) => { _db = e.target.result; resolve(_db); };
-      req.onerror = (e) => reject(e.target.error);
+  async function loginComGoogle() {
+    const { error } = await _client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        scopes: 'https://www.googleapis.com/auth/drive.file',
+        redirectTo: location.href,
+      }
+    });
+    if (error) throw error;
+  }
+
+  async function logout() {
+    await _client.auth.signOut();
+  }
+
+  async function getUsuario() {
+    const { data: { user } } = await _client.auth.getUser();
+    return user;
+  }
+
+  function onAuthChange(callback) {
+    _client.auth.onAuthStateChange((event, session) => {
+      callback(session?.user || null);
     });
   }
 
-  function _tx(store, modo) {
-    return _db.transaction(store, modo).objectStore(store);
+  /* ---- HELPERS ---- */
+  async function _userId() {
+    const user = await getUsuario();
+    if (!user) throw new Error('Usuário não autenticado');
+    return user.id;
   }
 
-  function _promessa(req) {
-    return new Promise((resolve, reject) => {
-      req.onsuccess = (e) => resolve(e.target.result);
-      req.onerror = (e) => reject(e.target.error);
-    });
+  async function _req(promise) {
+    const { data, error } = await promise;
+    if (error) throw error;
+    return data;
   }
 
   /* ---- CRIANÇAS ---- */
-
   async function listarCriancas() {
-    await abrir();
-    return _promessa(_tx('criancas', 'readonly').getAll());
+    const uid = await _userId();
+    const rows = await _req(_client.from('criancas').select('*').eq('user_id', uid).order('nome'));
+    return rows.map(_deserializar);
   }
 
   async function obterCrianca(id) {
-    await abrir();
-    return _promessa(_tx('criancas', 'readonly').get(Number(id)));
+    const uid = await _userId();
+    const rows = await _req(_client.from('criancas').select('*').eq('id', id).eq('user_id', uid).limit(1));
+    return rows.length ? _deserializar(rows[0]) : null;
   }
 
   async function salvarCrianca(dados) {
-    await abrir();
+    const uid = await _userId();
+    const row = _serializar({ ...dados, user_id: uid });
     if (dados.id) {
-      return _promessa(_tx('criancas', 'readwrite').put(dados));
+      await _req(_client.from('criancas').update(row).eq('id', dados.id).eq('user_id', uid));
+      return dados.id;
     }
-    return _promessa(_tx('criancas', 'readwrite').add(dados));
+    const inserted = await _req(_client.from('criancas').insert(row).select('id').single());
+    return inserted.id;
   }
 
   async function excluirCrianca(id) {
-    await abrir();
-    return _promessa(_tx('criancas', 'readwrite').delete(Number(id)));
+    const uid = await _userId();
+    await _req(_client.from('criancas').delete().eq('id', id).eq('user_id', uid));
   }
 
-  /* ---- ATENDIMENTOS (dentro do registro da criança) ---- */
-
+  /* ---- ATENDIMENTOS (array dentro do registro da criança) ---- */
   async function salvarAtendimento(criancaId, atendimento) {
     const crianca = await obterCrianca(criancaId);
     if (!crianca) throw new Error('Criança não encontrada');
@@ -93,44 +105,81 @@ const BancoAT = (function () {
   }
 
   /* ---- CONFIGURAÇÕES ---- */
-
   async function obterConfiguracoes() {
-    await abrir();
-    const cfg = await _promessa(_tx('configuracoes', 'readonly').get('principal'));
-    return cfg || { chave: 'principal', tema: 'escuro', profissionalNome: '', assinatura: '', logo: '' };
+    const uid = await _userId();
+    const rows = await _req(_client.from('configuracoes').select('*').eq('user_id', uid).limit(1));
+    return rows.length ? rows[0] : { tema: 'escuro', profissionalNome: '', assinatura: '', logo: '' };
   }
 
   async function salvarConfiguracoes(dados) {
-    await abrir();
-    dados.chave = 'principal';
-    return _promessa(_tx('configuracoes', 'readwrite').put(dados));
+    const uid = await _userId();
+    const row = { ...dados, user_id: uid };
+    const rows = await _req(_client.from('configuracoes').select('id').eq('user_id', uid).limit(1));
+    if (rows.length) {
+      await _req(_client.from('configuracoes').update(row).eq('user_id', uid));
+    } else {
+      await _req(_client.from('configuracoes').insert(row));
+    }
+  }
+
+  /* ---- SERIALIZAÇÃO (atendimentos como JSONB) ---- */
+  function _serializar(dados) {
+    return { ...dados, atendimentos: dados.atendimentos || [] };
+  }
+
+  function _deserializar(row) {
+    return { ...row, atendimentos: row.atendimentos || [] };
   }
 
   /* ---- BACKUP ---- */
-
   async function exportarTudo() {
     const criancas = await listarCriancas();
     const configuracoes = await obterConfiguracoes();
-    return { versao: VERSAO, exportadoEm: new Date().toISOString(), criancas, configuracoes };
+    return { versao: 2, exportadoEm: new Date().toISOString(), criancas, configuracoes };
   }
 
   async function importarTudo(dados) {
-    await abrir();
-    const tx = _db.transaction(['criancas', 'configuracoes'], 'readwrite');
-    const storeCriancas = tx.objectStore('criancas');
-    const storeCfg = tx.objectStore('configuracoes');
-
-    await _promessa(storeCriancas.clear());
-    await _promessa(storeCfg.clear());
-
-    for (const c of (dados.criancas || [])) storeCriancas.put(c);
-    if (dados.configuracoes) storeCfg.put(dados.configuracoes);
-
-    return new Promise((resolve, reject) => {
-      tx.oncomplete = resolve;
-      tx.onerror = (e) => reject(e.target.error);
-    });
+    const uid = await _userId();
+    // Apaga tudo do usuário
+    await _req(_client.from('criancas').delete().eq('user_id', uid));
+    await _req(_client.from('configuracoes').delete().eq('user_id', uid));
+    // Reimporta
+    for (const c of (dados.criancas || [])) {
+      const { id, ...resto } = c;
+      await _req(_client.from('criancas').insert(_serializar({ ...resto, user_id: uid })));
+    }
+    if (dados.configuracoes) {
+      const { id, ...resto } = dados.configuracoes;
+      await _req(_client.from('configuracoes').insert({ ...resto, user_id: uid }));
+    }
   }
 
-  return { abrir, listarCriancas, obterCrianca, salvarCrianca, excluirCrianca, salvarAtendimento, excluirAtendimento, obterConfiguracoes, salvarConfiguracoes, exportarTudo, importarTudo };
+  /* ---- GOOGLE DRIVE BACKUP ---- */
+  async function salvarBackupNoDrive(jsonStr, nomeArquivo) {
+    const { data: { session } } = await _client.auth.getSession();
+    const token = session?.provider_token;
+    if (!token) throw new Error('Token do Google não disponível. Faça login novamente.');
+
+    // Cria ou atualiza arquivo no Drive
+    const metadata = { name: nomeArquivo, mimeType: 'application/json', parents: ['appDataFolder'] };
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+    form.append('file', new Blob([jsonStr], { type: 'application/json' }));
+
+    const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!resp.ok) throw new Error('Falha ao salvar no Google Drive');
+    return await resp.json();
+  }
+
+  return {
+    getClient, loginComGoogle, logout, getUsuario, onAuthChange,
+    listarCriancas, obterCrianca, salvarCrianca, excluirCrianca,
+    salvarAtendimento, excluirAtendimento,
+    obterConfiguracoes, salvarConfiguracoes,
+    exportarTudo, importarTudo, salvarBackupNoDrive,
+  };
 })();
