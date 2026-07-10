@@ -1,0 +1,14 @@
+{
+  "name": "Sistema AT – Prontuário Terapêutico",
+  "short_name": "Sistema AT",
+  "description": "Prontuário terapêutico para Atendentes Terapêuticos",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#10141a",
+  "theme_color": "#4fb0a5",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
