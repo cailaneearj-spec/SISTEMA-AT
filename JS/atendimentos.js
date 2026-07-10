@@ -151,7 +151,7 @@ const Atendimentos = (function () {
 
       const dados = {
         ...(editando ? at : {}),
-        data,
+        data: document.getElementById('fat-data').value || null,
         resumo: document.getElementById('fat-resumo').value.trim(),
         observacoes: document.getElementById('fat-obs').value.trim(),
       };
