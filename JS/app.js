@@ -92,6 +92,9 @@ const App = (function () {
         // Backup automático
         try { await Backup.verificarBackupAutomatico(); } catch { /* silencioso */ }
 
+        // Realtime — recarrega a view quando dados mudam em outro dispositivo
+        BancoAT.escutarMudancas('criancas', () => _rotear());
+
         // Roteamento
         window.removeEventListener('hashchange', _rotear);
         window.addEventListener('hashchange', _rotear);
