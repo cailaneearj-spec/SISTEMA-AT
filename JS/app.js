@@ -21,7 +21,13 @@ const App = (function () {
     return location.hash.replace('#/', '').split('?')[0].trim() || 'criancas';
   }
 
-  function navegar(rota) { location.hash = `#/${rota}`; }
+  function navegar(rota) {
+    if (location.hash === `#/${rota}`) {
+      _rotear(); // força re-render se já está na mesma rota
+    } else {
+      location.hash = `#/${rota}`;
+    }
+  }
 
   function _atualizarNavAtivo(rota) {
     document.querySelectorAll('.nav-item').forEach(el => {
