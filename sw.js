@@ -1,6 +1,6 @@
 /* sw.js — Service Worker: cache offline para PWA */
 
-const CACHE = 'sistemaAT-v1';
+const CACHE = 'sistemaAT-v3';
 const ARQUIVOS = [
   './',
   './index.html',
