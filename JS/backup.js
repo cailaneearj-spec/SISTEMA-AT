@@ -24,22 +24,12 @@ const Backup = (function () {
     const json = JSON.stringify(dados, null, 2);
     const data = new Date().toISOString().slice(0, 10);
     const nomeArquivo = `SistemaAT_backup_${data}.json`;
-
-    try {
-      await BancoAT.salvarBackupNoDrive(json, nomeArquivo);
-      localStorage.setItem(CHAVE_ULTIMO_BACKUP, String(Date.now()));
-      if (automatico) {
-        UI.toast('📦 Backup automático salvo no Google Drive.', 'sucesso');
-      } else {
-        UI.toast('Backup salvo no Google Drive com sucesso.', 'sucesso');
-      }
-    } catch (err) {
-      // Se falhar no Drive, baixa localmente como fallback
-      _baixarJson(json, nomeArquivo);
-      localStorage.setItem(CHAVE_ULTIMO_BACKUP, String(Date.now()));
-      if (automatico) {
-        UI.toast('📦 Backup automático baixado (Drive indisponível).', 'info');
-      }
+    _baixarJson(json, nomeArquivo);
+    localStorage.setItem(CHAVE_ULTIMO_BACKUP, String(Date.now()));
+    if (automatico) {
+      UI.toast('📦 Backup automático baixado para seus Downloads.', 'sucesso');
+    } else {
+      UI.toast('Backup baixado com sucesso.', 'sucesso');
     }
   }
 
