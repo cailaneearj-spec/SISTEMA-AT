@@ -154,18 +154,22 @@ const BancoAT = (function () {
     }
   }
 
+  /* ---- REALTIME ---- */
+  function escutarMudancas(tabela, callback) {
+    _client.channel(`public:${tabela}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: tabela }, callback)
+      .subscribe();
+  }
+
   /* ---- GOOGLE DRIVE BACKUP ---- */
   async function salvarBackupNoDrive(jsonStr, nomeArquivo) {
     const { data: { session } } = await _client.auth.getSession();
     const token = session?.provider_token;
-    if (!token) throw new Error('Token do Google não disponível. Faça login novamente.');
-
-    // Cria ou atualiza arquivo no Drive
+    if (!token) throw new Error('Token do Google não disponível.');
     const metadata = { name: nomeArquivo, mimeType: 'application/json', parents: ['appDataFolder'] };
     const form = new FormData();
     form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
     form.append('file', new Blob([jsonStr], { type: 'application/json' }));
-
     const resp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -181,5 +185,6 @@ const BancoAT = (function () {
     salvarAtendimento, excluirAtendimento,
     obterConfiguracoes, salvarConfiguracoes,
     exportarTudo, importarTudo, salvarBackupNoDrive,
+    escutarMudancas,
   };
 })();
