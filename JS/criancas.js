@@ -262,7 +262,7 @@ const Criancas = (function () {
       await BancoAT.salvarCrianca(dados);
       UI.fecharModal();
       UI.toast(editando ? 'Dados atualizados.' : 'Criança cadastrada.', 'sucesso');
-      App.navegar('criancas');
+      setTimeout(() => App.navegar('criancas'), 300);
     });
   }
 
