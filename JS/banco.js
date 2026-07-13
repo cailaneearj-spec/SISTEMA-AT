@@ -53,7 +53,7 @@ const BancoAT = (function () {
   /* ---- CRIANÇAS ---- */
   async function listarCriancas() {
     const uid = await _userId();
-    const rows = await _req(_client.from('criancas').select('*').eq('user_id', uid).order('nome'));
+    const rows = await _req(_client.from('criancas').select('*').eq('user_id', uid).order('nome').limit(1000));
     return rows.map(_deserializar);
   }
 
