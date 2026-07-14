@@ -165,7 +165,7 @@ const Criancas = (function () {
       await BancoAT.excluirCrianca(c.id);
       UI.fecharModal();
       UI.toast(`${c.nome} excluída com sucesso.`, 'sucesso');
-      App.navegar('criancas');
+      await renderizarView(document.getElementById('view-root'));
     });
   }
 
@@ -240,9 +240,7 @@ const Criancas = (function () {
     document.getElementById('fc-cancelar').addEventListener('click', UI.fecharModal);
     document.getElementById('form-crianca').addEventListener('submit', async (e) => {
       e.preventDefault();
-      console.log('[DEBUG] submit disparado');
       const nome = document.getElementById('fc-nome').value.trim();
-      console.log('[DEBUG] nome:', nome);
       if (!nome) { UI.toast('O nome é obrigatório.', 'erro'); return; }
 
       const dados = {
@@ -261,13 +259,11 @@ const Criancas = (function () {
         atendimentos: c.atendimentos || [],
       };
 
-      console.log('[DEBUG] dados:', dados);
       try {
-        const id = await BancoAT.salvarCrianca(dados);
-        console.log('[DEBUG] salvo com id:', id);
+        await BancoAT.salvarCrianca(dados);
         UI.fecharModal();
         UI.toast(editando ? 'Dados atualizados.' : 'Criança cadastrada.', 'sucesso');
-        setTimeout(() => App.navegar('criancas'), 300);
+        await renderizarView(document.getElementById('view-root'));
       } catch(err) {
         console.error('[DEBUG] erro ao salvar:', err);
         UI.toast('Erro ao salvar: ' + err.message, 'erro');
